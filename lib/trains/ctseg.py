@@ -5,13 +5,12 @@ from __future__ import print_function
 import torch
 import numpy as np
 
-from lib.models.losses import FocalLoss
-from lib.models.losses import RegL1Loss, RegLoss, NormRegL1Loss, RegWeightedL1Loss,SegLoss,SegLoss2
-from lib.models.decode import ctdet_decode
-from lib.models.utils import _sigmoid
-from lib.utils.debugger import Debugger
-from lib.utils.post_process import ctdet_post_process
-from lib.utils.oracle_utils import gen_oracle_map
+from models.losses import FocalLoss
+from models.losses import RegL1Loss, RegLoss, NormRegL1Loss, RegWeightedL1Loss,SegLoss,SegLoss2
+from models.decode import ctdet_decode
+from models.utils import _sigmoid
+from utils.debugger import Debugger
+from utils.post_process import ctdet_post_process
 from .base_trainer import BaseTrainer
 
 

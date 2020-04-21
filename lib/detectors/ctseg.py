@@ -13,11 +13,11 @@ try:
 except:
     print('NMS not imported! If you need it,'
           ' do \n cd $CenterNet_ROOT/src/lib/external \n make')
-from lib.models.decode import ctseg_decode
-from lib.models.utils import flip_tensor
-from lib.utils.image import get_affine_transform
-from lib.utils.post_process import ctseg_post_process
-from lib.utils.debugger import Debugger
+from models.decode import ctseg_decode
+from models.utils import flip_tensor
+from utils.image import get_affine_transform
+from utils.post_process import ctseg_post_process
+from utils.debugger import Debugger
 
 from .base_detector import BaseDetector
 
@@ -95,7 +95,7 @@ class CtsegDetector(BaseDetector):
                         [(bbox[0] + bbox[2]) / 2, (bbox[1] + bbox[3]) / 2], dtype=np.float32)
 
                     segment_mask = np.zeros_like(segment)
-                    pad_rate = 0.3
+                    pad_rate = 0.1
                     x, y = np.clip([ct[0] - (1 + pad_rate) * w / 2, ct[0] + (1 + pad_rate) * w / 2], 0,
                                    segment.shape[1] - 1).astype(np.int), \
                            np.clip([ct[1] - (1 + pad_rate) * h / 2, ct[1] + (1 + pad_rate) * h / 2], 0,

@@ -15,7 +15,7 @@ class opts(object):
     self.parser.add_argument('--dataset', default='coco_seg',
                              help='coco | coco_seg | kitti | coco_hp | pascal ')
 
-    self.parser.add_argument('--data_dir', default='/data/yoloCao/DataSet')
+    self.parser.add_argument('--data_dir', default='/home/zhe.zhao/data/')
 
     self.parser.add_argument('--exp_id', default='3x3conv')
     self.parser.add_argument('--test', action='store_true')
@@ -361,7 +361,7 @@ class opts(object):
       'exdet': {'default_resolution': [512, 512], 'num_classes': 80, 
                 'mean': [0.408, 0.447, 0.470], 'std': [0.289, 0.274, 0.278],
                 'dataset': 'coco'},
-      'ctseg': {'default_resolution': [512, 512], 'num_classes': 1,
+      'ctseg': {'default_resolution': [384, 1248], 'num_classes': 2,
                   'mean': [0.408, 0.447, 0.470], 'std': [0.289, 0.274, 0.278],
                   'dataset': 'coco_seg'},
       'multi_pose': {

@@ -41,11 +41,11 @@ class Debugger(object):
         (255, 0, 0), (0, 0, 255), (255, 0, 0), (0, 0, 255),
         (255, 0, 0), (0, 0, 255), (255, 0, 0), (0, 0, 255),
         (255, 0, 0), (0, 0, 255)]
-    elif num_classes == 80 or dataset == 'coco':
+    elif dataset == 'coco':
       self.names = coco_class_name
 
-    elif num_classes == 1 or dataset == 'coco_seg':
-      self.names = ['person']
+    elif dataset == 'coco_seg':
+      self.names = coco_class_name
     elif num_classes == 20 or dataset == 'pascal':
       self.names = pascal_class_name
     elif dataset == 'gta':

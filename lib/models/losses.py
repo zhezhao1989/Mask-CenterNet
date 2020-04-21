@@ -12,8 +12,8 @@ import torch
 import torch.nn as nn
 from .utils import _tranpose_and_gather_feat
 import torch.nn.functional as F
-from lib.models.utils import _sigmoid
-import lib.utils.lovasz_losses as L
+from models.utils import _sigmoid
+import utils.lovasz_losses as L
 from torch.autograd import Variable
 
 def _slow_neg_loss(pred, gt):

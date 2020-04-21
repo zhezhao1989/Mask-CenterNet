@@ -9,10 +9,10 @@ import torch
 import json
 import cv2
 import os
-from lib.utils.image import flip, color_aug
-from lib.utils.image import get_affine_transform, affine_transform
-from lib.utils.image import gaussian_radius, draw_umich_gaussian, draw_msra_gaussian
-from lib.utils.image import draw_dense_reg
+from utils.image import flip, color_aug
+from utils.image import get_affine_transform, affine_transform
+from utils.image import gaussian_radius, draw_umich_gaussian, draw_msra_gaussian
+from utils.image import draw_dense_reg
 import math
 
 
@@ -36,7 +36,9 @@ class CTSegDataset(data.Dataset):
         anns = self.coco.loadAnns(ids=ann_ids)
 
         # delete not person and crowd
-        anns = list(filter(lambda x:x['category_id'] in self._valid_ids and x['iscrowd']!= 1 , anns))
+#        anns = list(filter(lambda x:x['category_id'] in self._valid_ids and x['iscrowd']!= 1 , anns))
+        anns = list(filter(lambda x:x['category_id'] in self._valid_ids , anns))
+
 
         num_objs = min(len(anns), self.max_objs)
         img = cv2.imread(img_path)
@@ -76,7 +78,10 @@ class CTSegDataset(data.Dataset):
         inp = cv2.warpAffine(img, trans_input,
                              (input_w, input_h),
                              flags=cv2.INTER_LINEAR)
+        test_im = inp.copy()
+
         inp = (inp.astype(np.float32) / 255.)
+
         if self.split == 'train' and not self.opt.no_color_aug:
             color_aug(self._data_rng, inp, self._eig_val, self._eig_vec)
 
@@ -91,7 +96,7 @@ class CTSegDataset(data.Dataset):
         hm = np.zeros((num_classes, output_h, output_w), dtype=np.float32)
         wh = np.zeros((self.max_objs, 2), dtype=np.float32)
         reg = np.zeros((self.max_objs, 2), dtype=np.float32)
-        seg = np.zeros((self.max_objs, output_h, output_w), dtype=np.float32)
+        seg = np.ones((self.max_objs, output_h, output_w), dtype=np.float32)*255
         ind = np.zeros((self.max_objs), dtype=np.int64)
         reg_mask = np.zeros((self.max_objs), dtype=np.uint8)
 
@@ -99,23 +104,39 @@ class CTSegDataset(data.Dataset):
             draw_umich_gaussian
 
         gt_det = []
+        if num_objs > 0:
+            iii = np.random.randint(0, num_objs)
+
         for k in range(num_objs):
             ann = anns[k]
             bbox = self._coco_box_to_bbox(ann['bbox'])
             cls_id = int(self.cat_ids[ann['category_id']])
-            segment = self.coco.annToMask(ann)
+            #ann['segmentation']['counts'] = ann['segmentation']['counts'].encode(encoding='UTF-8')
+            if ann['segmentation'] != None:
+                segment = self.coco.annToMask(ann)
             if flipped:
                 bbox[[0, 2]] = width - bbox[[2, 0]] - 1
-                segment = segment[:, ::-1]
+                if ann['segmentation']!=None:
+                    segment = segment[:, ::-1]
+            '''
+            if ann['segmentation']!=None and k == iii:
+                seg_index = cv2.warpAffine(segment, trans_input,
+                                     (input_w, input_h),
+                                     flags=cv2.INTER_LINEAR)
+                seg_index = seg_index > 0
+                color = np.array([[255,0,0]])
+                test_im[seg_index] = test_im[seg_index]*0.2 + color * 0.8
+            '''
 
             bbox[:2] = affine_transform(bbox[:2], trans_output)
             bbox[2:] = affine_transform(bbox[2:], trans_output)
             bbox[[0, 2]] = np.clip(bbox[[0, 2]], 0, output_w - 1)
             bbox[[1, 3]] = np.clip(bbox[[1, 3]], 0, output_h - 1)
-            segment= cv2.warpAffine(segment, trans_seg_output,
-                                 (output_w, output_h),
-                                 flags=cv2.INTER_LINEAR)
-            segment = segment.astype(np.float32)
+            if ann['segmentation']!=None:
+                segment= cv2.warpAffine(segment, trans_seg_output,
+                                     (output_w, output_h),
+                                     flags=cv2.INTER_LINEAR)
+                segment = segment.astype(np.float32)
             h, w = bbox[3] - bbox[1], bbox[2] - bbox[0]
             if h > 0 and w > 0:
                 radius = gaussian_radius((math.ceil(h), math.ceil(w)))
@@ -129,22 +150,31 @@ class CTSegDataset(data.Dataset):
                 ind[k] = ct_int[1] * output_w + ct_int[0]
                 reg[k] = ct - ct_int
                 reg_mask[k] = 1
-                pad_rate = 0.3
-                segment_mask = np.ones_like(segment)
-                x,y = (np.clip([ct[0] - (1 + pad_rate)*w/2 ,ct[0] + (1 + pad_rate)*w/2 ],0,output_w - 1)*2).astype(np.int), \
-                      (np.clip([ct[1] - (1 + pad_rate)*h/2 , ct[1] + (1 + pad_rate)*h/2],0,output_h - 1)*2).astype(np.int)
-                segment_mask[y[0]:y[1],x[0]:x[1]] = 0
-                segment[segment_mask == 1] = 255
-                seg[k] = segment
+                pad_rate = 0.1
+                if ann['segmentation']!=None:
+                    segment_mask = np.ones_like(segment)
+                    x,y = (np.clip([ct[0] - (1 + pad_rate)*w/2 ,ct[0] + (1 + pad_rate)*w/2 ],0,output_w - 1)).astype(np.int), \
+                          (np.clip([ct[1] - (1 + pad_rate)*h/2 , ct[1] + (1 + pad_rate)*h/2],0,output_h - 1)).astype(np.int)
+                    segment_mask[y[0]:y[1],x[0]:x[1]] = 0
+                    segment[segment>0] = 1
+                    segment[segment_mask == 1] = 255
+                    seg[k] = segment
+                if ann['segmentation']!=None:
+                    pass
+                    #cv2.rectangle(
+                    #      segment, (bbox[0], bbox[1]), (bbox[0], bbox[1]), (255,0,0), 2)
+                    #print(file_name.split('/')[-1])
+                    #cv2.imwrite('/home/zhe.zhao/'+ file_name.split('/')[-1].split('.')[0]+str(k)+'.jpg',segment*255)
+                    #cv2.imwrite('/home/zhe.zhao/0_'+ file_name.split('/')[-1].split('.')[0]+str(k)+'.jpg',test_im)
+                    #cv2.waitKey(0)
+                    #seg_mask[k] = segment_mask
 
-                # cv2.imshow('',segment-255)
-                # cv2.waitKey(0)
-                #seg_mask[k] = segment_mask
-
-                # print(np.sum(segment)/np.sum(segment_mask)) ## pos / neg
+                #print(np.sum(segment)/np.sum(segment_mask)) ## pos / neg
 
                 gt_det.append([ct[0] - w / 2, ct[1] - h / 2,
                                ct[0] + w / 2, ct[1] + h / 2, 1, cls_id])
+
+        #cv2.imwrite('/home/zhe.zhao/'+ file_name.split('/')[-1],test_im)
 
         ret = {'input': inp, 'hm': hm, 'reg_mask': reg_mask, 'ind': ind,
                'wh': wh ,'reg': reg ,'seg':seg }
